@@ -3,7 +3,7 @@ module ClinicalTrial where
 import Daml.Script
 import DA.Set (Set)
 import DA.Set qualified as S
-import DA.Optional (fromSome, isNone)
+import DA.Optional (isNone)
 
 type ClinicalTrialId = ContractId ClinicalTrial
 type PatientInfoId = ContractId PatientInfo
@@ -105,10 +105,8 @@ template AddPatientAgreement
         trialId : ClinicalTrialId
       controller medic
       do
-        trial <- fetch trialId
-        assertMsg "Already a patient" (notElem patient trial.patients)
-        archive trialId
-        create trial with patients = patient :: trial.patients; observers = S.insert patient trial.observers
+        exercise trialId (AddPatientAfterAgreement with medic; patient)
+
 
 -- 1B. ENROLL PRINCIPAL RESEARCHER
 template AddPrincipalResearcherProposal
@@ -170,10 +168,7 @@ template AddMedicAgreement
         trialId : ClinicalTrialId
       controller trial.principalResearcher
       do
-        trial <- fetch trialId
-        assertMsg "Already a medic" (notElem medic trial.medics)
-        archive trialId
-        create trial with medics = medic :: trial.medics; observers = S.insert medic trial.observers
+        exercise trialId (AddMedicAfterAgreement with medic)
 
 -- 2. PROPOSE CLINICAL TRIAL
 template ClinicalTrialProposal
@@ -269,17 +264,34 @@ template ClinicalTrial
                 with trial = this; medic; patient
     -- 5. Performs Treatment
 
-    choice ArchiveTrial : ClinicalTrialId
+    choice AddMedicAfterAgreement : ClinicalTrialId
       with
-        archiveBy : Party
-      controller archiveBy
+        medic : Party
+      controller principalResearcher
       do
-        archive self
+        assertMsg "Already a medic" (notElem medic medics)
+        create this 
+          with 
+            medics = medic :: medics
+            observers = S.insert medic observers
+
+    choice AddPatientAfterAgreement : ClinicalTrialId
+      with
+        medic : Party
+        patient : Party
+      controller medic
+      do
+        assertMsg "Not a medic" (elem medic medics)
+        assertMsg "Already a patient" (notElem patient patients)
+        create this
+          with 
+            patients = patient :: patients
+            observers = S.insert patient observers
     
 
 
 -- SCRIPT START
-setup : Script ClinicalTrialId
+setup : Script ()
 
 setup = script do
   sponsor1 <- allocateParty "Pfizer Sponsor"
@@ -335,41 +347,37 @@ setup = script do
   addMedicAgreementId <- submit medic1 do
     exerciseCmd addMedicProposalId AcceptAddMedicProposal
 
--- onde estava Tiago START --
---   submit researcher1 do
---     exerciseCmd addMedicAgreementId AddMedic with trialId
--- onde estava Tiago END --
+  trialId <- submit researcher1 do
+    exerciseCmd addMedicAgreementId AddMedic with trialId
 
   -- Patient: Register personal info and share
-  -- patient1 <- allocateParty "Thomas Patient"
+  patient1 <- allocateParty "Thomas Patient"
     
-  -- -- Researcher: Add Patient
-  -- addPatientProposalId <- submit medic1 do
-  --   exerciseCmd trialId InvitePatient with medic = medic1, patient = patient1
+  -- Researcher: Add Patient
+  addPatientProposalId <- submit medic1 do
+    exerciseCmd trialId InvitePatient with medic = medic1, patient = patient1
 
-  -- patient1InfoId <- submit patient1 do
-  --   createCmd PatientInfo 
-  --       with 
-  --         patient = patient1
-  --         age = 24
-  --         sex = M
-  --         observers = S.empty
+  patient1InfoId <- submit patient1 do
+    createCmd PatientInfo 
+        with 
+          patient = patient1
+          age = 24
+          sex = M
+          observers = S.empty
 
-  -- patient1InfoId <- submit patient1 do
-  --   exerciseCmd patient1InfoId SharePatientInfo with party = medic1
+  patient1InfoId <- submit patient1 do
+    exerciseCmd patient1InfoId SharePatientInfo with party = medic1
 
-  -- addPatientAgreementId <- submit patient1 do
-  --   exerciseCmd addPatientProposalId AcceptAddPatientProposal
-  --     with patientInfoId = patient1InfoId
+  addPatientAgreementId <- submit patient1 do
+    exerciseCmd addPatientProposalId AcceptAddPatientProposal
+      with patientInfoId = patient1InfoId
 
-  -- submit medic1 do
-  --   exerciseCmd addPatientAgreementId AddPatient with trialId
+  trialId <- submit medic1 do
+    exerciseCmd addPatientAgreementId AddPatient with trialId
 
 
   -- TODO: TO CORRECT patient (Text) with a PatientID
   let
     treatmentResult1 = TreatmentResult with patient = "John Smith", treatment = treatment0, notes = "Feeling well"
 
-  
-
-  return trialId
+  return ()

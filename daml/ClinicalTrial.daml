@@ -4,6 +4,7 @@ import Daml.Script
 import DA.Set (Set)
 import DA.Set qualified as S
 import DA.Optional (isNone)
+import DA.List (delete)
 
 type ClinicalTrialId = ContractId ClinicalTrial
 type PatientInfoId = ContractId PatientInfo
@@ -288,6 +289,18 @@ template ClinicalTrial
             patients = patient :: patients
             observers = S.insert patient observers
     
+    choice DropPatient : ClinicalTrialId
+      with
+        medic : Party
+        patient : Party
+      controller medic
+      do
+        assertMsg "Not a medic" (elem medic medics)
+        assertMsg "Not a patient" (elem patient patients)
+        create this
+          with 
+            patients = delete patient patients
+            observers = S.delete patient observers
 
 
 -- SCRIPT START
@@ -379,5 +392,10 @@ setup = script do
   -- TODO: TO CORRECT patient (Text) with a PatientID
   let
     treatmentResult1 = TreatmentResult with patient = "John Smith", treatment = treatment0, notes = "Feeling well"
+
+  -- Medic: Drop Patient
+  trialId <- submit medic1 do
+    exerciseCmd trialId DropPatient
+      with medic = medic1; patient = patient1
 
   return ()

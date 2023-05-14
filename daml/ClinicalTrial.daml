@@ -250,6 +250,18 @@ template ClinicalTrial
               trial = this
               addMedicAgreement = AddMedicAgreement
                 with trial = this; medic
+    
+
+    choice AddMedicAfterAgreement : ClinicalTrialId
+      with
+        medic : Party
+      controller principalResearcher
+      do
+        assertMsg "Already a medic" (notElem medic medics)
+        create this 
+          with 
+            medics = medic :: medics
+            observers = S.insert medic observers
     -- 3c. Invite Patient
     nonconsuming choice InvitePatient : AddPatientProposalId
       with
@@ -263,19 +275,7 @@ template ClinicalTrial
               medic; trial = this
               addPatientAgreement = AddPatientAgreement
                 with trial = this; medic; patient
-    -- 5. Performs Treatment
-
-    choice AddMedicAfterAgreement : ClinicalTrialId
-      with
-        medic : Party
-      controller principalResearcher
-      do
-        assertMsg "Already a medic" (notElem medic medics)
-        create this 
-          with 
-            medics = medic :: medics
-            observers = S.insert medic observers
-
+    
     choice AddPatientAfterAgreement : ClinicalTrialId
       with
         medic : Party
@@ -289,6 +289,7 @@ template ClinicalTrial
             patients = patient :: patients
             observers = S.insert patient observers
     
+    -- 5. Performs Treatment
     choice DropPatient : ClinicalTrialId
       with
         medic : Party

@@ -49,6 +49,14 @@ data TreatmentResult = TreatmentResult
     time: Time
   deriving (Eq, Show)
 
+data MonitorResult = MonitorResult
+  with
+    patient: Party
+    exam: Text
+    notes: Text
+    time: Time
+  deriving (Eq, Show)
+
 -- 3C. GATHER PATIENTS
 template PatientInfo
   with
@@ -207,6 +215,7 @@ template ClinicalTrial
     regulatoryAuthorityApprovals : [RegulatoryAuthorityApproval]
     treatments : [Treatment]
     treatmentResults : [TreatmentResult]
+    monitorResults : [MonitorResult]
     brochurePath : Optional Text
     patients : [Party]
     medics : [Party]
@@ -321,7 +330,14 @@ template ClinicalTrial
           create this with treatmentResults = treatmentResultToAdd::treatmentResults
 
     -- 6a. Monitor Patient
-
+    choice MonitorPatient: ClinicalTrialId
+      with
+        medic: Party
+        monitorResultToAdd: MonitorResult
+      controller medic
+        do
+          create this with monitorResults = monitorResultToAdd::monitorResults
+          
     -- 6b. Drop Patient
     choice DropPatient : ClinicalTrialId
       with
@@ -373,6 +389,7 @@ setup = script do
         regulatoryAuthorityApprovals = []
         treatments = [treatment0, treatment1, treatment2]
         treatmentResults = []
+        monitorResults = []
         patients = []
         medics = []
         observers = S.empty
@@ -448,6 +465,16 @@ setup = script do
   trialId <- submit medic1 do
     exerciseCmd trialId PerformTreatment
       with medic = medic1; treatmentResultToAdd = treatmentResult1
+
+  -- Medic: Monitor Patient
+  now <- getTime -- ERROR date = 1970
+  let
+    monitorResult1 = MonitorResult with patient = patient1, exam = "TAC Scan", notes = "Cancer reduction", time = now
+  trialId <- submit medic1 do
+    exerciseCmd trialId MonitorPatient
+      with medic = medic1; monitorResultToAdd = monitorResult1
+
+     
   -- Medic: Drop Patient
   trialId <- submit medic1 do
     exerciseCmd trialId DropPatient

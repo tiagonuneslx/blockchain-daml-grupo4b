@@ -218,7 +218,7 @@ template ClinicalTrialProposal
               regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approval = Rejected else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
               state = TrialCancelled
 
-  -- 9. Completes and Submits Clinical Trial Report
+-- 9. Completes and Submits Clinical Trial Report
 template TrialReport
   with
     name : Text
@@ -429,6 +429,7 @@ template ClinicalTrial
               treatments
               brochurePath = fromSome brochurePath
 
+    -- 11. Concludes trial
     choice ConcludeTrial : ClinicalTrialId
       controller sponsor
         do
@@ -563,11 +564,11 @@ setup = script do
         regulatoryAuthority = ema
         sponsor = sponsor1
 
-  -- 11. Approves Drug​
+  -- 10. Approves Drug​
   reportId <- submit ema do
     exerciseCmd reportId ApproveReport
 
-  -- 12. Concludes trial
+  -- 11. Concludes trial
   trialId <- submit sponsor1 do
     exerciseCmd trialId ConcludeTrial
   

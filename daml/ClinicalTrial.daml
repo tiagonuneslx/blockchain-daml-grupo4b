@@ -39,8 +39,7 @@ data Treatment = Treatment
 
 data TreatmentResult = TreatmentResult
   with
-    -- TO CORRECT ONCE PATIENT SECTION IS CREATED patient: Party
-    patient: Text
+    patient: Party
     treatment: Treatment
     notes: Text
   deriving (Eq, Show)
@@ -290,6 +289,10 @@ template ClinicalTrial
             observers = S.insert patient observers
     
     -- 5. Performs Treatment
+
+    -- 6a. Monitor Patient
+
+    -- 6b. Drop Patient
     choice DropPatient : ClinicalTrialId
       with
         medic : Party
@@ -392,7 +395,7 @@ setup = script do
 
   -- TODO: TO CORRECT patient (Text) with a PatientID
   let
-    treatmentResult1 = TreatmentResult with patient = "John Smith", treatment = treatment0, notes = "Feeling well"
+    treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment0, notes = "Feeling well"
 
   -- Medic: Drop Patient
   trialId <- submit medic1 do

@@ -206,7 +206,17 @@ template ClinicalTrialProposal
           archive trialId
           create trial with regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approval = Approved else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
 
-    -- TODO: Reject
+    choice RejectClinicalTrialProposal : ClinicalTrialId
+      with
+        trialId : ClinicalTrialId
+      controller regulatoryAuthority
+        do
+          trial <- fetch trialId
+          archive trialId
+          create trial
+            with 
+              regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approval = Rejected else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
+              state = TrialCancelled
 
   -- 9. Completes and Submits Clinical Trial Report
 template TrialReport
@@ -222,16 +232,18 @@ template TrialReport
     brochurePath : Text
   where
     signatory sponsor
+    observer regulatoryAuthority
 
     choice ApproveReport : TrialReportId
       controller regulatoryAuthority
         do
+          assertMsg "Already Reviewed" (regulatoryAuthorityApproval == Pending)
           create this with regulatoryAuthorityApproval = Approved
-    signatory sponsor
 
     choice RejectReport : TrialReportId
       controller regulatoryAuthority
         do
+          assertMsg "Already Reviewed" (regulatoryAuthorityApproval == Pending)
           create this with regulatoryAuthorityApproval = Rejected
 
 
@@ -398,7 +410,7 @@ template ClinicalTrial
           with state = TrialCancelled
 
     -- 9. Completes and Submits Clinical Trial Report​
-    choice SubmitTrialReport : TrialReportId
+    nonconsuming choice SubmitTrialReport : TrialReportId
       with
         regulatoryAuthority: Party
         sponsor : Party
@@ -417,6 +429,11 @@ template ClinicalTrial
               treatments
               brochurePath = fromSome brochurePath
 
+    choice ConcludeTrial : ClinicalTrialId
+      controller sponsor
+        do
+          assertMsg "Trial is not in progress" (state == TrialStarted)
+          create this with state = TrialConcluded; observers = S.empty
 
 
 -- SCRIPT START
@@ -547,8 +564,12 @@ setup = script do
         sponsor = sponsor1
 
   -- 11. Approves Drug​
-  reportId <- submit researcher1 do
+  reportId <- submit ema do
     exerciseCmd reportId ApproveReport
 
+  -- 12. Concludes trial
+  trialId <- submit sponsor1 do
+    exerciseCmd trialId ConcludeTrial
+  
 
   return ()

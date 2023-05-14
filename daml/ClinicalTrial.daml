@@ -3,7 +3,7 @@ module ClinicalTrial where
 import Daml.Script
 import DA.Set (Set)
 import DA.Set qualified as S
-import DA.Optional (isNone)
+import DA.Optional (fromSome, isNone)
 import DA.List (delete)
 
 type ClinicalTrialId = ContractId ClinicalTrial
@@ -15,6 +15,7 @@ type AddMedicProposalId = ContractId AddMedicProposal
 type AddMedicAgreementId = ContractId AddMedicAgreement
 type AddPatientProposalId = ContractId AddPatientProposal
 type AddPatientAgreementId = ContractId AddPatientAgreement
+type TrialReportId = ContractId TrialReport
 
 -- Data type definitions
 data Sex
@@ -25,14 +26,18 @@ data Phase
   = PhaseI | PhaseII | PhaseIII | PhaseIV
   deriving (Eq, Show)
 
+data Approval
+  = Pending | Approved | Rejected | Cancelled
+  deriving (Eq, Show)
+
 data TrialState
-  = TrialCreated | TrialStarted | TrialCancelled | TrialConcluded
+  = TrialCreated | TrialStarted | TrialCancelled | TrialSubmitted | TrialConcluded
   deriving (Eq, Show)
 
 data RegulatoryAuthorityApproval = RegulatoryAuthorityApproval
   with
     regulatoryAuthority: Party
-    approved: Bool
+    approval: Approval
   deriving (Eq, Show)
 
 data Treatment = Treatment
@@ -199,15 +204,43 @@ template ClinicalTrialProposal
         do
           trial <- fetch trialId
           archive trialId
-          create trial with regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approved = True else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
+          create trial with regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approval = Approved else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
 
     -- TODO: Reject
+
+  -- 9. Completes and Submits Clinical Trial Report
+template TrialReport
+  with
+    name : Text
+    phase: Phase
+    illness: Text
+    sponsor : Party
+    principalResearcher: Party
+    regulatoryAuthority : Party
+    regulatoryAuthorityApproval : Approval
+    treatments : [Treatment]
+    brochurePath : Text
+  where
+    signatory sponsor
+
+    choice ApproveReport : TrialReportId
+      controller regulatoryAuthority
+        do
+          create this with regulatoryAuthorityApproval = Approved
+    signatory sponsor
+
+    choice RejectReport : TrialReportId
+      controller regulatoryAuthority
+        do
+          create this with regulatoryAuthorityApproval = Rejected
+
 
 -- 1A. NEW CLINICAL TRIAL
 
 template ClinicalTrial
   with
     name : Text
+    illness : Text
     phase: Phase
     sponsor : Party
     state : TrialState
@@ -242,7 +275,7 @@ template ClinicalTrial
         do
           assertMsg "Trial has already started" (state == TrialCreated)
           assertMsg "Already proposed trial to this Regulatory Authority" (not (any (\element -> element.regulatoryAuthority == regulatoryAuthority) regulatoryAuthorityApprovals))
-          let regulatoryAuthorityApproval = RegulatoryAuthorityApproval with regulatoryAuthority, approved = False
+          let regulatoryAuthorityApproval = RegulatoryAuthorityApproval with regulatoryAuthority, approval = Pending
           newTrialId <- create this with regulatoryAuthorityApprovals = regulatoryAuthorityApproval :: regulatoryAuthorityApprovals, observers = S.insert regulatoryAuthority observers
           newTrialProposalId <- create ClinicalTrialProposal
             with regulatoryAuthority; trial = this
@@ -252,7 +285,7 @@ template ClinicalTrial
       controller sponsor
         do
           assertMsg "Trial has already started" (state == TrialCreated)
-          assertMsg "Pending approval of a Regulatory Authority" (not (any (\element -> not element.approved) regulatoryAuthorityApprovals))
+          assertMsg "Regulatory Authority didn't approve start of Trial" (not (any (\element -> element.approval /= Approved) regulatoryAuthorityApprovals))
           create this with state = TrialStarted
     -- 3a. Prepare Trial Brochure
     choice CreateBrochure : ClinicalTrialId
@@ -363,7 +396,27 @@ template ClinicalTrial
         assertMsg "Not a regulatoryAuthority" (any (\element -> element.regulatoryAuthority == regulatoryAuthority) regulatoryAuthorityApprovals)
         create this
           with state = TrialCancelled
-    
+
+    -- 9. Completes and Submits Clinical Trial Report​
+    choice SubmitTrialReport : TrialReportId
+      with
+        regulatoryAuthority: Party
+        sponsor : Party
+      controller principalResearcher
+        do
+          assertMsg "Trial is not in progress" (state == TrialStarted)
+          create TrialReport
+            with
+              name
+              phase
+              illness
+              sponsor
+              principalResearcher = fromSome principalResearcher
+              regulatoryAuthority
+              regulatoryAuthorityApproval = Pending
+              treatments
+              brochurePath = fromSome brochurePath
+
 
 
 -- SCRIPT START
@@ -381,6 +434,7 @@ setup = script do
     createCmd ClinicalTrial
       with
         name = "Pfizer Vaccine"
+        illness = "COVID-19"
         phase = PhaseI
         state = TrialCreated
         sponsor = sponsor1
@@ -479,5 +533,22 @@ setup = script do
   trialId <- submit medic1 do
     exerciseCmd trialId DropPatient
       with medic = medic1; patient = patient1
+
+  -- 8. Cancel Clinical Trial​
+  -- trialId <- submit infarmed do
+  --   exerciseCmd trialId CancelTrial with regulatoryAuthority = infarmed
+
+  -- 9. Completes and Submits Clinical Trial Report​
+  ema <- allocateParty "EMA"
+  reportId <- submit researcher1 do
+    exerciseCmd trialId SubmitTrialReport
+      with
+        regulatoryAuthority = ema
+        sponsor = sponsor1
+
+  -- 11. Approves Drug​
+  reportId <- submit researcher1 do
+    exerciseCmd reportId ApproveReport
+
 
   return ()

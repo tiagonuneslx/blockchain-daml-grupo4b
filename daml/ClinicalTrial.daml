@@ -308,6 +308,17 @@ template ClinicalTrial
             observers = S.insert patient observers
     
     -- 5. Performs Treatment
+    choice PerformTreatment: ClinicalTrialId
+      with
+        medic: Party
+        -- patient: Party
+        -- treatment: Treatment
+        -- notes: Text
+        -- dateTime: Time
+        treatmentResultToAdd: TreatmentResult
+      controller medic
+        do
+          create this with treatmentResults = treatmentResultToAdd::treatmentResults
 
     -- 6a. Monitor Patient
 
@@ -431,10 +442,12 @@ setup = script do
 
 
   -- Medic: Perform Treatment
-  now <- getTime
+  now <- getTime -- ERROR date = 1970
   let
     treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment0, notes = "Feeling well", time = now
-
+  trialId <- submit medic1 do
+    exerciseCmd trialId PerformTreatment
+      with medic = medic1; treatmentResultToAdd = treatmentResult1
   -- Medic: Drop Patient
   trialId <- submit medic1 do
     exerciseCmd trialId DropPatient

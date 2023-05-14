@@ -461,7 +461,7 @@ setup = script do
   -- Medic: Perform Treatment
   now <- getTime -- ERROR date = 1970
   let
-    treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment0, notes = "Feeling well", time = now
+    treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment1, notes = "Feeling well", time = now
   trialId <- submit medic1 do
     exerciseCmd trialId PerformTreatment
       with medic = medic1; treatmentResultToAdd = treatmentResult1

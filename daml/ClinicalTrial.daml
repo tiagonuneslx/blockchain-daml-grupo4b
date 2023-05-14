@@ -16,6 +16,7 @@ type AddMedicAgreementId = ContractId AddMedicAgreement
 type AddPatientProposalId = ContractId AddPatientProposal
 type AddPatientAgreementId = ContractId AddPatientAgreement
 type TrialReportId = ContractId TrialReport
+type SUSAREventId = ContractId SUSAREvent
 
 -- Data type definitions
 data Sex
@@ -218,6 +219,31 @@ template ClinicalTrialProposal
               regulatoryAuthorityApprovals = map (\regulatoryAuthorityApproval -> if regulatoryAuthorityApproval.regulatoryAuthority == regulatoryAuthority then regulatoryAuthorityApproval with approval = Rejected else regulatoryAuthorityApproval) trial.regulatoryAuthorityApprovals
               state = TrialCancelled
 
+-- 7a. Report SUSAR (Suspected Unexpected Serious Adverse Reaction)​
+template SUSAREvent
+  with
+    medic : Party
+    principalResearcher : Party
+    patient : Party
+    name : Text
+    illness : Text
+    phase: Phase
+    sponsor : Party
+    treatment: Treatment
+    notes : Text
+    reportPath : Optional Text
+  where
+    signatory sponsor
+    observer principalResearcher
+    
+    choice SubmitReport : SUSAREventId
+      with
+        reportPath : Text
+      controller principalResearcher
+        do
+          create this with reportPath = Some reportPath
+    
+
 -- 9. Completes and Submits Clinical Trial Report
 template TrialReport
   with
@@ -398,6 +424,30 @@ template ClinicalTrial
             patients = delete patient patients
             observers = S.delete patient observers
 
+    -- 7a. Report SUSAR (Suspected Unexpected Serious Adverse Reaction)​
+    nonconsuming choice ReportSUSAR : SUSAREventId
+      with
+        medic : Party
+        patient : Party
+        treatment : Treatment
+        notes : Text
+      controller medic
+      do
+        assertMsg "Trial is not in progress" (state == TrialStarted)
+        assertMsg "Not a medic" (elem medic medics)
+        create SUSAREvent
+          with 
+            medic
+            principalResearcher = fromSome principalResearcher
+            patient
+            name
+            illness
+            phase
+            sponsor
+            treatment
+            notes
+            reportPath = None
+
     -- 8. Cancel Clinical Trial​
     choice CancelTrial : ClinicalTrialId
       with
@@ -551,6 +601,19 @@ setup = script do
   trialId <- submit medic1 do
     exerciseCmd trialId DropPatient
       with medic = medic1; patient = patient1
+
+  -- 7a. Report SUSAR (Suspected Unexpected Serious Adverse Reaction)​
+  susarEventId <- submit medic1 do
+    exerciseCmd trialId ReportSUSAR
+      with
+        medic = medic1
+        patient = patient1
+        treatment = treatment1
+        notes = "High fever, around 41ºC 😱"
+      
+  -- 7b. Submit SUSAR with Report​
+  susarEventId <- submit researcher1 do
+    exerciseCmd susarEventId SubmitReport with reportPath = "c:\\path\\report1.pdf"
 
   -- 8. Cancel Clinical Trial​
   -- trialId <- submit infarmed do

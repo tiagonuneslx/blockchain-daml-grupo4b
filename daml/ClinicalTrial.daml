@@ -42,6 +42,7 @@ data TreatmentResult = TreatmentResult
     patient: Party
     treatment: Treatment
     notes: Text
+    time: Time
   deriving (Eq, Show)
 
 -- 3C. GATHER PATIENTS
@@ -393,9 +394,10 @@ setup = script do
     exerciseCmd addPatientAgreementId AddPatient with trialId
 
 
-  -- TODO: TO CORRECT patient (Text) with a PatientID
+  -- Medic: Perform Treatment
+  now <- getTime
   let
-    treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment0, notes = "Feeling well"
+    treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment0, notes = "Feeling well", time = now
 
   -- Medic: Drop Patient
   trialId <- submit medic1 do

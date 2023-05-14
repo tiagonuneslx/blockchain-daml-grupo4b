@@ -282,6 +282,7 @@ template ClinicalTrial
     phase: Phase
     sponsor : Party
     state : TrialState
+    -- CRO: Optional Party
     principalResearcher: Optional Party
     regulatoryAuthorityApprovals : [RegulatoryAuthorityApproval]
     treatments : [Treatment]
@@ -398,6 +399,7 @@ template ClinicalTrial
         treatmentResultToAdd: TreatmentResult
       controller medic
         do
+          assertMsg "Not a medic" (elem medic medics)
           create this with treatmentResults = treatmentResultToAdd::treatmentResults
 
     -- 6a. Monitor Patient
@@ -407,6 +409,7 @@ template ClinicalTrial
         monitorResultToAdd: MonitorResult
       controller medic
         do
+          assertMsg "Not a medic" (elem medic medics)
           create this with monitorResults = monitorResultToAdd::monitorResults
           
     -- 6b. Drop Patient

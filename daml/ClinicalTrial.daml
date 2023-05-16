@@ -546,22 +546,32 @@ setup = script do
   trialId <- submit researcher1 do
     exerciseCmd trialId CreateBrochure with brochurePath = "c:\\path\\hash"
   
-  -- PResearcher: Add Medic (Propose -> Accept)
+  -- PResearcher: Add Medic 1 
   medic1 <- allocateParty "Dr John Medic"
-  addMedicProposalId <- submit researcher1 do
+  addMedic1ProposalId <- submit researcher1 do
     exerciseCmd trialId InviteMedic with medic = medic1
 
-  addMedicAgreementId <- submit medic1 do
-    exerciseCmd addMedicProposalId AcceptAddMedicProposal
+  addMedic1AgreementId <- submit medic1 do
+    exerciseCmd addMedic1ProposalId AcceptAddMedicProposal
 
   trialId <- submit researcher1 do
-    exerciseCmd addMedicAgreementId AddMedic with trialId
+    exerciseCmd addMedic1AgreementId AddMedic with trialId
 
-  -- Patient: Register personal info and share
+  -- PResearcher: Add Medic 2
+  medic2 <- allocateParty "Dr Phill Medic"
+  addMedic2ProposalId <- submit researcher1 do
+    exerciseCmd trialId InviteMedic with medic = medic2
+
+  addMedic2AgreementId <- submit medic2 do
+    exerciseCmd addMedic2ProposalId AcceptAddMedicProposal
+
+  trialId <- submit researcher1 do
+    exerciseCmd addMedic2AgreementId AddMedic with trialId
+
+  -- Patient 1
   patient1 <- allocateParty "Thomas Patient"
-    
-  -- Researcher: Add Patient
-  addPatientProposalId <- submit medic1 do
+
+  addPatient1ProposalId <- submit medic1 do
     exerciseCmd trialId InvitePatient with medic = medic1, patient = patient1
 
   patient1InfoId <- submit patient1 do
@@ -575,12 +585,36 @@ setup = script do
   patient1InfoId <- submit patient1 do
     exerciseCmd patient1InfoId SharePatientInfo with party = medic1
 
-  addPatientAgreementId <- submit patient1 do
-    exerciseCmd addPatientProposalId AcceptAddPatientProposal
+  addPatient1AgreementId <- submit patient1 do
+    exerciseCmd addPatient1ProposalId AcceptAddPatientProposal
       with patientInfoId = patient1InfoId
 
   trialId <- submit medic1 do
-    exerciseCmd addPatientAgreementId AddPatient with trialId
+    exerciseCmd addPatient1AgreementId AddPatient with trialId
+    
+  -- Patient 2
+  patient2 <- allocateParty "Ricky Patient"
+
+  addPatientProposal2Id <- submit medic2 do
+    exerciseCmd trialId InvitePatient with medic = medic2, patient = patient2
+
+  patient2InfoId <- submit patient2 do
+    createCmd PatientInfo 
+        with 
+          patient = patient2
+          age = 24
+          sex = M
+          observers = S.empty
+
+  patient2InfoId <- submit patient2 do
+    exerciseCmd patient2InfoId SharePatientInfo with party = medic2
+
+  addPatient2AgreementId <- submit patient2 do
+    exerciseCmd addPatientProposal2Id AcceptAddPatientProposal
+      with patientInfoId = patient2InfoId
+
+  trialId <- submit medic2 do
+    exerciseCmd addPatient2AgreementId AddPatient with trialId
 
 
   -- Medic: Perform Treatment

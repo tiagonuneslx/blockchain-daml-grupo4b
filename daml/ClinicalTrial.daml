@@ -257,6 +257,7 @@ template TrialReport
     regulatoryAuthorityApproval : Approval
     treatments : [Treatment]
     brochurePath : Text
+    trialReportPath: Text
   where
     signatory sponsor
     observer regulatoryAuthority
@@ -468,6 +469,7 @@ template ClinicalTrial
       with
         regulatoryAuthority: Party
         sponsor : Party
+        trialReportPath: Text
       controller principalResearcher
         do
           assertMsg "Trial is not in progress" (state == TrialStarted)
@@ -482,6 +484,7 @@ template ClinicalTrial
               regulatoryAuthorityApproval = Pending
               treatments
               brochurePath = fromSome brochurePath
+              trialReportPath
 
     -- 11. Concludes trial
     choice ConcludeTrial : ClinicalTrialId
@@ -666,6 +669,7 @@ setup = script do
       with
         regulatoryAuthority = ema
         sponsor = sponsor1
+        trialReportPath = "c:\\path\\trialReport1.pdf"
 
   -- 10. Approves Drug​
   reportId <- submit ema do

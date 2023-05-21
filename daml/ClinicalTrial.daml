@@ -226,7 +226,7 @@ template SUSAREvent
     medic : Party
     principalResearcher : Party
     patient : Party
-    name : Text
+    title : Text
     illness : Text
     phase: Phase
     sponsor : Party
@@ -248,7 +248,7 @@ template SUSAREvent
 -- 9. Completes and Submits Clinical Trial Report
 template TrialReport
   with
-    name : Text
+    title : Text
     phase: Phase
     illness: Text
     sponsor : Party
@@ -278,7 +278,7 @@ template TrialReport
 
 template ClinicalTrial
   with
-    name : Text
+    title : Text
     illness : Text
     phase: Phase
     sponsor : Party
@@ -444,7 +444,7 @@ template ClinicalTrial
             medic
             principalResearcher = fromSome principalResearcher
             patient
-            name
+            title
             illness
             phase
             sponsor
@@ -473,7 +473,7 @@ template ClinicalTrial
           assertMsg "Trial is not in progress" (state == TrialStarted)
           create TrialReport
             with
-              name
+              title
               phase
               illness
               sponsor
@@ -505,7 +505,7 @@ setup = script do
   trialId <- submit sponsor1 do
     createCmd ClinicalTrial
       with
-        name = "Pfizer Vaccine"
+        title = "Pfizer Vaccine"
         illness = "COVID-19"
         phase = PhaseI
         state = TrialCreated

@@ -508,7 +508,7 @@ setup = script do
   trialId <- submit sponsor1 do
     createCmd ClinicalTrial
       with
-        title = "Pfizer Vaccine"
+        title = "Pfizer Vaccine ABC"
         illness = "COVID-19"
         phase = PhaseI
         state = TrialCreated
@@ -624,7 +624,7 @@ setup = script do
 
 
   -- Medic: Perform Treatment
-  now <- getTime -- ERROR date = 1970
+  now <- getTime -- check date = 1970
   let
     treatmentResult1 = TreatmentResult with patient = patient1, treatment = treatment1, notes = "Feeling well", time = now
   trialId <- submit medic1 do
@@ -632,9 +632,9 @@ setup = script do
       with medic = medic1; treatmentResultToAdd = treatmentResult1
 
   -- Medic: Monitor Patient
-  now <- getTime -- ERROR date = 1970
+  now <- getTime -- check date = 1970
   let
-    monitorResult1 = MonitorResult with patient = patient1, exam = "TAC Scan", notes = "Cancer reduction", time = now
+    monitorResult1 = MonitorResult with patient = patient1, exam = "Chest X-ray", notes = "COVID infection reduction", time = now
   trialId <- submit medic1 do
     exerciseCmd trialId MonitorPatient
       with medic = medic1; monitorResultToAdd = monitorResult1
@@ -671,7 +671,7 @@ setup = script do
         sponsor = sponsor1
         trialReportPath = "c:\\path\\trialReport1.pdf"
 
-  -- 10. Approves Drug​
+  -- 10. Approve Clinical Trial Report
   reportId <- submit ema do
     exerciseCmd reportId ApproveReport
 

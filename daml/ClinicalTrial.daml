@@ -67,6 +67,7 @@ data MonitorResult = MonitorResult
 template PatientInfo
   with
     patient: Party
+    name: Text
     age: Int
     sex: Sex
     observers: Set Party
@@ -569,7 +570,7 @@ setup = script do
     exerciseCmd addMedic2AgreementId AddMedic with trialId
 
   -- Patient 1
-  patient1 <- allocateParty "Thomas Patient"
+  patient1 <- allocateParty "Patient001"
 
   addPatient1ProposalId <- submit medic1 do
     exerciseCmd trialId InvitePatient with medic = medic1, patient = patient1
@@ -578,6 +579,7 @@ setup = script do
     createCmd PatientInfo 
         with 
           patient = patient1
+          name = "Thomas Patient"
           age = 24
           sex = M
           observers = S.empty
@@ -593,7 +595,7 @@ setup = script do
     exerciseCmd addPatient1AgreementId AddPatient with trialId
     
   -- Patient 2
-  patient2 <- allocateParty "Ricky Patient"
+  patient2 <- allocateParty "Patient002"
 
   addPatientProposal2Id <- submit medic2 do
     exerciseCmd trialId InvitePatient with medic = medic2, patient = patient2
@@ -602,6 +604,7 @@ setup = script do
     createCmd PatientInfo 
         with 
           patient = patient2
+          name = "Ricky Patient"
           age = 24
           sex = M
           observers = S.empty
